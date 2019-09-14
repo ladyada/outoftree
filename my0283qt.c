@@ -31,8 +31,8 @@
 #define ST77XX_MADCTL_BGR 0x08
 #define ST77XX_MADCTL_RGB 0x00
 
-static const short xoffset = 10;
-static const short yoffset = 10;
+static const short col_offset = 52;
+static const short row_offset = 40;
 
 
 static void st7789vada_enable(struct drm_simple_display_pipe *pipe,
@@ -109,7 +109,7 @@ static const struct drm_simple_display_pipe_funcs st7789vada_pipe_funcs = {
 };
 
 static const struct drm_display_mode st7789vada_mode = {
-  TINYDRM_MODE(200, 200, 58, 43), // width, height, mm_w, mm_h
+  TINYDRM_MODE(180, 160, 58, 43), // width, height, mm_w, mm_h
 };
 
 DEFINE_DRM_GEM_CMA_FOPS(st7789vada_fops);
@@ -186,10 +186,10 @@ static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
 		tr = cma_obj->vaddr;
 	}
 
-	x1 = clip.x1 + xoffset;
-	x2 = clip.x2 - 1 + xoffset;
-	y1 = clip.y1 + yoffset;
-	y2 = clip.y2 - 1 + yoffset;
+	x1 = clip.x1 + col_offset;
+	x2 = clip.x2 - 1 + col_offset;
+	y1 = clip.y1 + row_offset;
+	y2 = clip.y2 - 1 + row_offset;
 
 	printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
 
