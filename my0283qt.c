@@ -109,7 +109,7 @@ static const struct drm_simple_display_pipe_funcs st7789vada_pipe_funcs = {
 };
 
 static const struct drm_display_mode st7789vada_mode = {
-  TINYDRM_MODE(180, 160, 58, 43), // width, height, mm_w, mm_h
+  TINYDRM_MODE(180, 240, 25, 15), // width, height, mm_w, mm_h
 };
 
 DEFINE_DRM_GEM_CMA_FOPS(st7789vada_fops);
