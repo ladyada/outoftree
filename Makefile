@@ -6,9 +6,9 @@ default:
 	$(MAKE) -C $(KDIR) M=$(pwd) modules
 
 install:
-	$(MAKE) -C $(KDIR) M=$$PWD modules_install
+	$(MAKE) -C $(KDIR) M=$(PWD) modules_install
 	$(DEPMOD)
 
 clean:
-	$(MAKE) -C $(KDIR) M=$$PWD clean
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
 

@@ -116,9 +116,9 @@ static struct drm_driver st7789vada_driver = {
 	.fops			= &st7789vada_fops,
 	TINYDRM_GEM_DRIVER_OPS,
 	.debugfs_init		= mipi_dbi_debugfs_init,
-	.name			= "mi0283qt",
-	.desc			= "Multi-Inno MI0283QT",
-	.date			= "20160614",
+	.name			= "st7789vada",
+	.desc			= "ST7789V Adafruit",
+	.date			= "20190914",
 	.major			= 1,
 	.minor			= 0,
 };
@@ -134,6 +134,129 @@ static const struct spi_device_id st7789vada_id[] = {
 	{ },
 };
 MODULE_DEVICE_TABLE(spi, st7789vada_id);
+
+
+static const struct drm_framebuffer_funcs st7789vada_fb_funcs = {
+	.destroy	= drm_gem_fb_destroy,
+	.create_handle	= drm_gem_fb_create_handle,
+	.dirty		= tinydrm_fb_dirty,
+};
+
+static const uint32_t st7789vada_formats[] = {
+	DRM_FORMAT_RGB565,
+	DRM_FORMAT_XRGB8888,
+};
+
+static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
+			     struct drm_file *file_priv,
+			     unsigned int flags, unsigned int color,
+			     struct drm_clip_rect *clips,
+			     unsigned int num_clips)
+{
+	struct drm_gem_cma_object *cma_obj = drm_fb_cma_get_gem_obj(fb, 0);
+	struct tinydrm_device *tdev = fb->dev->dev_private;
+	struct mipi_dbi *mipi = mipi_dbi_from_tinydrm(tdev);
+	bool swap = mipi->swap_bytes;
+	struct drm_clip_rect clip;
+	int ret = 0;
+	bool full;
+	void *tr;
+
+	if (!mipi->enabled)
+		return 0;
+
+	full = tinydrm_merge_clips(&clip, clips, num_clips, flags,
+				   fb->width, fb->height);
+
+	DRM_DEBUG("Flushing [FB:%d] x1=%u, x2=%u, y1=%u, y2=%u\n", fb->base.id,
+		  clip.x1, clip.x2, clip.y1, clip.y2);
+
+	if (!mipi->dc || !full || swap ||
+	    fb->format->format == DRM_FORMAT_XRGB8888) {
+		tr = mipi->tx_buf;
+		ret = mipi_dbi_buf_copy(mipi->tx_buf, fb, &clip, swap);
+		if (ret)
+			return ret;
+	} else {
+		tr = cma_obj->vaddr;
+	}
+
+	mipi_dbi_command(mipi, MIPI_DCS_SET_COLUMN_ADDRESS,
+			 (clip.x1 >> 8) & 0xFF, clip.x1 & 0xFF,
+			 (clip.x2 >> 8) & 0xFF, (clip.x2 - 1) & 0xFF);
+	mipi_dbi_command(mipi, MIPI_DCS_SET_PAGE_ADDRESS,
+			 (clip.y1 >> 8) & 0xFF, clip.y1 & 0xFF,
+			 (clip.y2 >> 8) & 0xFF, (clip.y2 - 1) & 0xFF);
+
+	ret = mipi_dbi_command_buf(mipi, MIPI_DCS_WRITE_MEMORY_START, tr,
+				(clip.x2 - clip.x1) * (clip.y2 - clip.y1) * 2);
+
+	return ret;
+}
+
+/**
+ * st7789vada - MIPI DBI initialization
+ * @dev: Parent device
+ * @mipi: &mipi_dbi structure to initialize
+ * @pipe_funcs: Display pipe functions
+ * @driver: DRM driver
+ * @mode: Display mode
+ * @rotation: Initial rotation in degrees Counter Clock Wise
+ *
+ * This function initializes a &mipi_dbi structure and it's underlying
+ * @tinydrm_device. It also sets up the display pipeline.
+ *
+ * Supported formats: Native RGB565 and emulated XRGB8888.
+ *
+ * Objects created by this function will be automatically freed on driver
+ * detach (devres).
+ *
+ * Returns:
+ * Zero on success, negative error code on failure.
+ */
+int st7789vada_init(struct device *dev, struct mipi_dbi *mipi,
+		  const struct drm_simple_display_pipe_funcs *pipe_funcs,
+		  struct drm_driver *driver,
+		  const struct drm_display_mode *mode, unsigned int rotation)
+{
+	size_t bufsize = mode->vdisplay * mode->hdisplay * sizeof(u16);
+	struct tinydrm_device *tdev = &mipi->tinydrm;
+	int ret;
+
+	if (!mipi->command)
+		return -EINVAL;
+
+	mutex_init(&mipi->cmdlock);
+
+	mipi->tx_buf = devm_kmalloc(dev, bufsize, GFP_KERNEL);
+	if (!mipi->tx_buf)
+		return -ENOMEM;
+
+	ret = devm_tinydrm_init(dev, tdev, &st7789vada_fb_funcs, driver);
+	if (ret)
+		return ret;
+
+	tdev->fb_dirty = st7789vada_fb_dirty;
+
+	/* TODO: Maybe add DRM_MODE_CONNECTOR_SPI */
+	ret = tinydrm_display_pipe_init(tdev, pipe_funcs,
+					DRM_MODE_CONNECTOR_VIRTUAL,
+					st7789vada_formats,
+					ARRAY_SIZE(st7789vada_formats), mode,
+					rotation);
+	if (ret)
+		return ret;
+
+	tdev->drm->mode_config.preferred_depth = 16;
+	mipi->rotation = rotation;
+
+	drm_mode_config_reset(tdev->drm);
+
+	DRM_DEBUG_KMS("preferred_depth=%u, rotation = %u\n",
+		      tdev->drm->mode_config.preferred_depth, rotation);
+
+	return 0;
+}
 
 static int st7789vada_probe(struct spi_device *spi)
 {
@@ -173,8 +296,11 @@ static int st7789vada_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	ret = mipi_dbi_init(&spi->dev, mipi, &st7789vada_pipe_funcs,
-			    &st7789vada_driver, &st7789vada_mode, rotation);
+	/* Cannot read from this controller via SPI */
+	mipi->read_commands = NULL;
+
+	ret = st7789vada_init(&spi->dev, mipi, &st7789vada_pipe_funcs,
+			      &st7789vada_driver, &st7789vada_mode, rotation);
 	if (ret)
 		return ret;
 
