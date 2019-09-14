@@ -24,7 +24,6 @@
 #include <drm/tinydrm/tinydrm-helpers.h>
 #include <video/mipi_display.h>
 
-
 #define ST77XX_MADCTL_MY  0x80
 #define ST77XX_MADCTL_MX  0x40
 #define ST77XX_MADCTL_MV  0x20
@@ -32,7 +31,7 @@
 #define ST77XX_MADCTL_BGR 0x08
 #define ST77XX_MADCTL_RGB 0x00
 
-static void mi0283qt_enable(struct drm_simple_display_pipe *pipe,
+static void st7789vada_enable(struct drm_simple_display_pipe *pipe,
 			    struct drm_crtc_state *crtc_state,
 			    struct drm_plane_state *plane_state)
 {
@@ -98,23 +97,23 @@ out_enable:
 	backlight_enable(mipi->backlight);
 }
 
-static const struct drm_simple_display_pipe_funcs mi0283qt_pipe_funcs = {
-	.enable = mi0283qt_enable,
+static const struct drm_simple_display_pipe_funcs st7789vada_pipe_funcs = {
+	.enable = st7789vada_enable,
 	.disable = mipi_dbi_pipe_disable,
 	.update = tinydrm_display_pipe_update,
 	.prepare_fb = drm_gem_fb_simple_display_pipe_prepare_fb,
 };
 
-static const struct drm_display_mode mi0283qt_mode = {
-	TINYDRM_MODE(135, 240, 0, 0),
+static const struct drm_display_mode st7789vada_mode = {
+	TINYDRM_MODE(240, 240, 58, 43),
 };
 
-DEFINE_DRM_GEM_CMA_FOPS(mi0283qt_fops);
+DEFINE_DRM_GEM_CMA_FOPS(st7789vada_fops);
 
-static struct drm_driver mi0283qt_driver = {
+static struct drm_driver st7789vada_driver = {
 	.driver_features	= DRIVER_GEM | DRIVER_MODESET | DRIVER_PRIME |
 				  DRIVER_ATOMIC,
-	.fops			= &mi0283qt_fops,
+	.fops			= &st7789vada_fops,
 	TINYDRM_GEM_DRIVER_OPS,
 	.debugfs_init		= mipi_dbi_debugfs_init,
 	.name			= "mi0283qt",
@@ -124,19 +123,19 @@ static struct drm_driver mi0283qt_driver = {
 	.minor			= 0,
 };
 
-static const struct of_device_id mi0283qt_of_match[] = {
+static const struct of_device_id st7789vada_of_match[] = {
 	{ .compatible = "multi-inno,mi0283qt" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, mi0283qt_of_match);
+MODULE_DEVICE_TABLE(of, st7789vada_of_match);
 
-static const struct spi_device_id mi0283qt_id[] = {
+static const struct spi_device_id st7789vada_id[] = {
 	{ "mi0283qt", 0 },
 	{ },
 };
-MODULE_DEVICE_TABLE(spi, mi0283qt_id);
+MODULE_DEVICE_TABLE(spi, st7789vada_id);
 
-static int mi0283qt_probe(struct spi_device *spi)
+static int st7789vada_probe(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
 	struct mipi_dbi *mipi;
@@ -174,8 +173,8 @@ static int mi0283qt_probe(struct spi_device *spi)
 	if (ret)
 		return ret;
 
-	ret = mipi_dbi_init(&spi->dev, mipi, &mi0283qt_pipe_funcs,
-			    &mi0283qt_driver, &mi0283qt_mode, rotation);
+	ret = mipi_dbi_init(&spi->dev, mipi, &st7789vada_pipe_funcs,
+			    &st7789vada_driver, &st7789vada_mode, rotation);
 	if (ret)
 		return ret;
 
@@ -184,21 +183,21 @@ static int mi0283qt_probe(struct spi_device *spi)
 	return devm_tinydrm_register(&mipi->tinydrm);
 }
 
-static void mi0283qt_shutdown(struct spi_device *spi)
+static void st7789vada_shutdown(struct spi_device *spi)
 {
 	struct mipi_dbi *mipi = spi_get_drvdata(spi);
 
 	tinydrm_shutdown(&mipi->tinydrm);
 }
 
-static int __maybe_unused mi0283qt_pm_suspend(struct device *dev)
+static int __maybe_unused st7789vada_pm_suspend(struct device *dev)
 {
 	struct mipi_dbi *mipi = dev_get_drvdata(dev);
 
 	return drm_mode_config_helper_suspend(mipi->tinydrm.drm);
 }
 
-static int __maybe_unused mi0283qt_pm_resume(struct device *dev)
+static int __maybe_unused st7789vada_pm_resume(struct device *dev)
 {
 	struct mipi_dbi *mipi = dev_get_drvdata(dev);
 
@@ -207,22 +206,22 @@ static int __maybe_unused mi0283qt_pm_resume(struct device *dev)
 	return 0;
 }
 
-static const struct dev_pm_ops mi0283qt_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(mi0283qt_pm_suspend, mi0283qt_pm_resume)
+static const struct dev_pm_ops st7789vada_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(st7789vada_pm_suspend, st7789vada_pm_resume)
 };
 
-static struct spi_driver mi0283qt_spi_driver = {
+static struct spi_driver st7789vada_spi_driver = {
 	.driver = {
 		.name = "mi0283qt",
 		.owner = THIS_MODULE,
-		.of_match_table = mi0283qt_of_match,
-		.pm = &mi0283qt_pm_ops,
+		.of_match_table = st7789vada_of_match,
+		.pm = &st7789vada_pm_ops,
 	},
-	.id_table = mi0283qt_id,
-	.probe = mi0283qt_probe,
-	.shutdown = mi0283qt_shutdown,
+	.id_table = st7789vada_id,
+	.probe = st7789vada_probe,
+	.shutdown = st7789vada_shutdown,
 };
-module_spi_driver(mi0283qt_spi_driver);
+module_spi_driver(st7789vada_spi_driver);
 
 MODULE_DESCRIPTION("Multi-Inno MI0283QT DRM driver");
 MODULE_AUTHOR("Noralf Trønnes");
