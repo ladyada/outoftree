@@ -90,11 +90,14 @@ out_enable:
 		y_offset = COL_OFFSET;
 		break;
 	case 180:
-		addr_mode = ST77XX_MADCTL_MY;
+		addr_mode = ST77XX_MADCTL_MX | ST77XX_MADCTL_MY;
+		x_offset = COL_OFFSET+1; // hack to account for extra pixel width to make even
+		y_offset = ROW_OFFSET; 
 		break;
 	case 270:
-		addr_mode = ST77XX_MADCTL_MV | ST77XX_MADCTL_MY |
-			    ST77XX_MADCTL_MX;
+		addr_mode = ST77XX_MADCTL_MV | ST77XX_MADCTL_MY;
+		x_offset = ROW_OFFSET;
+		y_offset = COL_OFFSET;
 		break;
 	}
 	mipi_dbi_command(mipi, MIPI_DCS_SET_ADDRESS_MODE, addr_mode);
