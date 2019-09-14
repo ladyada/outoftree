@@ -31,9 +31,10 @@
 #define ST77XX_MADCTL_BGR 0x08
 #define ST77XX_MADCTL_RGB 0x00
 
-static const short col_offset = 52;
-static const short row_offset = 40;
-
+static const short COL_OFFSET = 52;
+static const short ROW_OFFSET = 40;
+static short x_offset = 0;
+static short y_offset = 0;
 
 static void st7789vada_enable(struct drm_simple_display_pipe *pipe,
 			    struct drm_crtc_state *crtc_state,
@@ -80,9 +81,13 @@ out_enable:
 	switch (mipi->rotation) {
 	default:
 		addr_mode = 0;
+		x_offset = COL_OFFSET;
+		y_offset = ROW_OFFSET;
 		break;
 	case 90:
-		addr_mode = ST77XX_MADCTL_MV;
+		addr_mode = ST77XX_MADCTL_MV | ST77XX_MADCTL_MX;
+		x_offset = ROW_OFFSET;
+		y_offset = COL_OFFSET;
 		break;
 	case 180:
 		addr_mode = ST77XX_MADCTL_MY;
@@ -186,10 +191,10 @@ static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
 		tr = cma_obj->vaddr;
 	}
 
-	x1 = clip.x1 + col_offset;
-	x2 = clip.x2 - 1 + col_offset;
-	y1 = clip.y1 + row_offset;
-	y2 = clip.y2 - 1 + row_offset;
+	x1 = clip.x1 + x_offset;
+	x2 = clip.x2 - 1 + x_offset;
+	y1 = clip.y1 + y_offset;
+	y2 = clip.y2 - 1 + y_offset;
 
 	printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
 
@@ -305,6 +310,8 @@ static int st7789vada_probe(struct spi_device *spi)
 		return PTR_ERR(mipi->backlight);
 
 	device_property_read_u32(dev, "rotation", &rotation);
+
+	printk(KERN_INFO "Rotation %d\n", rotation);
 
 	ret = mipi_dbi_spi_init(spi, mipi, dc);
 	if (ret)
