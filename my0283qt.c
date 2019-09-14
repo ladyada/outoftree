@@ -31,8 +31,9 @@
 #define ST77XX_MADCTL_BGR 0x08
 #define ST77XX_MADCTL_RGB 0x00
 
-static const short COL_OFFSET = 52;
-static const short ROW_OFFSET = 40;
+static u32 col_offset = 0;
+static u32 row_offset = 0;
+static u8 col_hack_fix_offset = 0;
 static short x_offset = 0;
 static short y_offset = 0;
 
@@ -45,7 +46,6 @@ static void st7789vada_enable(struct drm_simple_display_pipe *pipe,
 	u8 addr_mode;
 	int ret;
 
-   printk(KERN_INFO "Hello, world.\n");
 	DRM_DEBUG_KMS("\n");
 
 	ret = mipi_dbi_poweron_conditional_reset(mipi);
@@ -81,23 +81,24 @@ out_enable:
 	switch (mipi->rotation) {
 	default:
 		addr_mode = 0;
-		x_offset = COL_OFFSET;
-		y_offset = ROW_OFFSET;
+		x_offset = col_offset;
+		y_offset = row_offset;
 		break;
 	case 90:
 		addr_mode = ST77XX_MADCTL_MV | ST77XX_MADCTL_MX;
-		x_offset = ROW_OFFSET;
-		y_offset = COL_OFFSET;
+		x_offset = row_offset;
+		y_offset = col_offset;
 		break;
 	case 180:
 		addr_mode = ST77XX_MADCTL_MX | ST77XX_MADCTL_MY;
-		x_offset = COL_OFFSET+1; // hack to account for extra pixel width to make even
-		y_offset = ROW_OFFSET; 
+		x_offset = col_offset+col_hack_fix_offset; 
+		// hack tweak to account for extra pixel width to make even
+		y_offset = row_offset; 
 		break;
 	case 270:
 		addr_mode = ST77XX_MADCTL_MV | ST77XX_MADCTL_MY;
-		x_offset = ROW_OFFSET;
-		y_offset = COL_OFFSET;
+		x_offset = row_offset;
+		y_offset = col_offset;
 		break;
 	}
 	mipi_dbi_command(mipi, MIPI_DCS_SET_ADDRESS_MODE, addr_mode);
@@ -199,7 +200,7 @@ static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
 	y1 = clip.y1 + y_offset;
 	y2 = clip.y2 - 1 + y_offset;
 
-	printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
+	#printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
 
 	mipi_dbi_command(mipi, MIPI_DCS_SET_COLUMN_ADDRESS,
 			 (x1 >> 8) & 0xFF, x1 & 0xFF,
@@ -245,8 +246,6 @@ int st7789vada_init(struct device *dev, struct mipi_dbi *mipi,
 
 	if (!mipi->command)
 		return -EINVAL;
-
-   printk(KERN_INFO "ST7789V adainit\n");
 
 	mutex_init(&mipi->cmdlock);
 
@@ -315,16 +314,22 @@ static int st7789vada_probe(struct spi_device *spi)
 		return PTR_ERR(mipi->backlight);
 
 	device_property_read_u32(dev, "rotation", &rotation);
-	printk(KERN_INFO "Rotation %d\n", rotation);
+	#printk(KERN_INFO "Rotation %d\n", rotation);
 
 	device_property_read_u32(dev, "width", &width);
-	printk(KERN_INFO "Width %d\n", width);
-	if (width == 0) {
+	if (width % 2) {
+	  width +=1;	  // odd width will cause a kernel panic
+	  col_hack_fix_offset = 1;
+	} else {
+	  col_hack_fix_offset = 0;
+	}
+	#printk(KERN_INFO "Width %d\n", width);
+	if ((width == 0) || (width > 240)) {
 	  width = 240; // default to full framebuff;
 	}
 	device_property_read_u32(dev, "height", &height);
-	printk(KERN_INFO "Height %d\n", height);
-	if (height == 0) {
+	#printk(KERN_INFO "Height %d\n", height);
+	if ((height == 0) || (height > 320)) {
 	  height = 320; // default to full framebuff;
 	}
 
@@ -332,6 +337,12 @@ static int st7789vada_probe(struct spi_device *spi)
 	  st7789vada_mode.hsync_end = st7789vada_mode.htotal = width;
 	st7789vada_mode.vdisplay = st7789vada_mode.vsync_start = 
 	  st7789vada_mode.vsync_end = st7789vada_mode.vtotal = height;
+
+	device_property_read_u32(dev, "col_offset", &col_offset);
+	#printk(KERN_INFO "Column offset %d\n", col_offset);
+
+	device_property_read_u32(dev, "row_offset", &row_offset);
+	#printk(KERN_INFO "Row offset %d\n", row_offset);
 
 	ret = mipi_dbi_spi_init(spi, mipi, dc);
 	if (ret)

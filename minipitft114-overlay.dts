@@ -49,6 +49,8 @@
 				rotation = <90>;
 				width = <136>;
 				height = <240>;
+				col_offset = <53>;
+				row_offset = <40>;
 				dc-gpios = <&gpio 25 0>;
 				backlight = <&backlight>;
 			};
@@ -66,9 +68,11 @@
 	};
 
 	__overrides__ {
-		speed =    <&pitft>,"spi-max-frequency:0";
-		rotation = <&pitft>,"rotation:0";
-		width =    <&pitft>,"width:0";
-		height =   <&pitft>,"height:0";
+		speed =       <&pitft>,"spi-max-frequency:0";
+		rotation =    <&pitft>,"rotation:0";
+		width =       <&pitft>,"width:0";
+		height =      <&pitft>,"height:0";
+		col_offset =  <&pitft>,"col_offset:0";
+		row_offset =  <&pitft>,"row_offset:0";
 	};
 };
