@@ -116,8 +116,8 @@ static const struct drm_simple_display_pipe_funcs st7789vada_pipe_funcs = {
 	.prepare_fb = drm_gem_fb_simple_display_pipe_prepare_fb,
 };
 
-static const struct drm_display_mode st7789vada_mode = {
-  TINYDRM_MODE(136, 240, 25, 15), // width, height, mm_w, mm_h
+static struct drm_display_mode st7789vada_mode = {
+  TINYDRM_MODE(240, 320, 25, 15), // width, height, mm_w, mm_h
 };
 
 DEFINE_DRM_GEM_CMA_FOPS(st7789vada_fops);
@@ -286,6 +286,8 @@ static int st7789vada_probe(struct spi_device *spi)
 	struct mipi_dbi *mipi;
 	struct gpio_desc *dc;
 	u32 rotation = 0;
+	u32 width = 240;
+	u32 height = 320;
 	int ret;
 
 	mipi = devm_kzalloc(dev, sizeof(*mipi), GFP_KERNEL);
@@ -313,8 +315,23 @@ static int st7789vada_probe(struct spi_device *spi)
 		return PTR_ERR(mipi->backlight);
 
 	device_property_read_u32(dev, "rotation", &rotation);
-
 	printk(KERN_INFO "Rotation %d\n", rotation);
+
+	device_property_read_u32(dev, "width", &width);
+	printk(KERN_INFO "Width %d\n", width);
+	if (width == 0) {
+	  width = 240; // default to full framebuff;
+	}
+	device_property_read_u32(dev, "height", &height);
+	printk(KERN_INFO "Height %d\n", height);
+	if (height == 0) {
+	  height = 320; // default to full framebuff;
+	}
+
+	st7789vada_mode.hdisplay = st7789vada_mode.hsync_start = 
+	  st7789vada_mode.hsync_end = st7789vada_mode.htotal = width;
+	st7789vada_mode.vdisplay = st7789vada_mode.vsync_start = 
+	  st7789vada_mode.vsync_end = st7789vada_mode.vtotal = height;
 
 	ret = mipi_dbi_spi_init(spi, mipi, dc);
 	if (ret)
