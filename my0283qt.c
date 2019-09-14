@@ -200,7 +200,7 @@ static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
 	y1 = clip.y1 + y_offset;
 	y2 = clip.y2 - 1 + y_offset;
 
-	#printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
+	//printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
 
 	mipi_dbi_command(mipi, MIPI_DCS_SET_COLUMN_ADDRESS,
 			 (x1 >> 8) & 0xFF, x1 & 0xFF,
@@ -314,7 +314,7 @@ static int st7789vada_probe(struct spi_device *spi)
 		return PTR_ERR(mipi->backlight);
 
 	device_property_read_u32(dev, "rotation", &rotation);
-	#printk(KERN_INFO "Rotation %d\n", rotation);
+	//printk(KERN_INFO "Rotation %d\n", rotation);
 
 	device_property_read_u32(dev, "width", &width);
 	if (width % 2) {
@@ -323,12 +323,12 @@ static int st7789vada_probe(struct spi_device *spi)
 	} else {
 	  col_hack_fix_offset = 0;
 	}
-	#printk(KERN_INFO "Width %d\n", width);
+	//printk(KERN_INFO "Width %d\n", width);
 	if ((width == 0) || (width > 240)) {
 	  width = 240; // default to full framebuff;
 	}
 	device_property_read_u32(dev, "height", &height);
-	#printk(KERN_INFO "Height %d\n", height);
+	//printk(KERN_INFO "Height %d\n", height);
 	if ((height == 0) || (height > 320)) {
 	  height = 320; // default to full framebuff;
 	}
@@ -339,10 +339,10 @@ static int st7789vada_probe(struct spi_device *spi)
 	  st7789vada_mode.vsync_end = st7789vada_mode.vtotal = height;
 
 	device_property_read_u32(dev, "col_offset", &col_offset);
-	#printk(KERN_INFO "Column offset %d\n", col_offset);
+	//printk(KERN_INFO "Column offset %d\n", col_offset);
 
 	device_property_read_u32(dev, "row_offset", &row_offset);
-	#printk(KERN_INFO "Row offset %d\n", row_offset);
+	//printk(KERN_INFO "Row offset %d\n", row_offset);
 
 	ret = mipi_dbi_spi_init(spi, mipi, dc);
 	if (ret)
