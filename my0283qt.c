@@ -1,6 +1,7 @@
 /*
- * DRM driver for Multi-Inno MI0283QT panels
+ * DRM driver for ST7789V panels with flexible config
  *
+ * Copyright 2019 Limor Fried
  * Copyright 2016 Noralf Trønnes
  *
  * This program is free software; you can redistribute it and/or modify
@@ -390,7 +391,7 @@ static const struct dev_pm_ops st7789vada_pm_ops = {
 
 static struct spi_driver st7789vada_spi_driver = {
 	.driver = {
-		.name = "mi0283qt",
+		.name = "st7789vada",
 		.owner = THIS_MODULE,
 		.of_match_table = st7789vada_of_match,
 		.pm = &st7789vada_pm_ops,
@@ -401,6 +402,6 @@ static struct spi_driver st7789vada_spi_driver = {
 };
 module_spi_driver(st7789vada_spi_driver);
 
-MODULE_DESCRIPTION("Multi-Inno MI0283QT DRM driver");
-MODULE_AUTHOR("Noralf Trønnes");
+MODULE_DESCRIPTION("Sitronix ST7789V Flexible DRM driver");
+MODULE_AUTHOR("Limor Fried");
 MODULE_LICENSE("GPL");
