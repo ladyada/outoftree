@@ -31,6 +31,10 @@
 #define ST77XX_MADCTL_BGR 0x08
 #define ST77XX_MADCTL_RGB 0x00
 
+static const short xoffset = 10;
+static const short yoffset = 10;
+
+
 static void st7789vada_enable(struct drm_simple_display_pipe *pipe,
 			    struct drm_crtc_state *crtc_state,
 			    struct drm_plane_state *plane_state)
@@ -105,7 +109,7 @@ static const struct drm_simple_display_pipe_funcs st7789vada_pipe_funcs = {
 };
 
 static const struct drm_display_mode st7789vada_mode = {
-	TINYDRM_MODE(240, 240, 58, 43),
+  TINYDRM_MODE(200, 200, 58, 43), // width, height, mm_w, mm_h
 };
 
 DEFINE_DRM_GEM_CMA_FOPS(st7789vada_fops);
@@ -161,6 +165,7 @@ static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
 	int ret = 0;
 	bool full;
 	void *tr;
+	u16 x1, x2, y1, y2;
 
 	if (!mipi->enabled)
 		return 0;
@@ -181,12 +186,19 @@ static int st7789vada_fb_dirty(struct drm_framebuffer *fb,
 		tr = cma_obj->vaddr;
 	}
 
+	x1 = clip.x1 + xoffset;
+	x2 = clip.x2 - 1 + xoffset;
+	y1 = clip.y1 + yoffset;
+	y2 = clip.y2 - 1 + yoffset;
+
+	printk(KERN_INFO "setaddrwin %d %d %d %d\n", x1, y1, x2, y2);
+
 	mipi_dbi_command(mipi, MIPI_DCS_SET_COLUMN_ADDRESS,
-			 (clip.x1 >> 8) & 0xFF, clip.x1 & 0xFF,
-			 (clip.x2 >> 8) & 0xFF, (clip.x2 - 1) & 0xFF);
+			 (x1 >> 8) & 0xFF, x1 & 0xFF,
+			 (x2 >> 8) & 0xFF, x2 & 0xFF);
 	mipi_dbi_command(mipi, MIPI_DCS_SET_PAGE_ADDRESS,
-			 (clip.y1 >> 8) & 0xFF, clip.y1 & 0xFF,
-			 (clip.y2 >> 8) & 0xFF, (clip.y2 - 1) & 0xFF);
+			 (y1 >> 8) & 0xFF, y1 & 0xFF,
+			 (y2 >> 8) & 0xFF, y2 & 0xFF);
 
 	ret = mipi_dbi_command_buf(mipi, MIPI_DCS_WRITE_MEMORY_START, tr,
 				(clip.x2 - clip.x1) * (clip.y2 - clip.y1) * 2);
@@ -225,6 +237,8 @@ int st7789vada_init(struct device *dev, struct mipi_dbi *mipi,
 
 	if (!mipi->command)
 		return -EINVAL;
+
+   printk(KERN_INFO "ST7789V adainit\n");
 
 	mutex_init(&mipi->cmdlock);
 
