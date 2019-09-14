@@ -1,4 +1,4 @@
-obj-m+=hello.o my0283qt.o
+obj-m+=hello.o st7789v_ada.o
 
 KDIR ?= /lib/modules/`uname -r`/build
 
