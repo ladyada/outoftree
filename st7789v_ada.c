@@ -144,7 +144,7 @@ static const struct of_device_id st7789vada_of_match[] = {
 MODULE_DEVICE_TABLE(of, st7789vada_of_match);
 
 static const struct spi_device_id st7789vada_id[] = {
-	{ "mi0283qt", 0 },
+	{ "st7789vada", 0 },
 	{ },
 };
 MODULE_DEVICE_TABLE(spi, st7789vada_id);
